@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>삼각형 땅따먹기</title>
+<style>
+:root{--bg:#f5f4ef;--fg:#1d1d1b;--card:#fff;--line:#dcdacf;--mu:#77756c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17171a;--fg:#ececea;--card:#232327;--line:#3a3a40;--mu:#9a9aa2;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17171a;--fg:#ececea;--card:#232327;--line:#3a3a40;--mu:#9a9aa2;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;min-height:100vh}
+h1{font-size:18px;margin:4px 0 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center;width:min(96vw,900px);font-size:14px}
+.bar input[type=range]{width:110px;vertical-align:middle}
+select,button{font:inherit;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer}
+button.on{background:var(--fg);color:var(--bg)}
+#st{display:flex;gap:8px;align-items:center;font-size:17px;font-weight:600;min-height:30px;flex-wrap:wrap;justify-content:center}
+.chip{width:16px;height:16px;border-radius:50%;display:inline-block;vertical-align:-2px}
+.sub{font-size:13px;color:var(--mu);font-weight:400}
+.score{width:min(96vw,900px);display:flex;flex-direction:column;gap:6px}
+.sc-row{display:flex;justify-content:space-between;font-size:14px;font-weight:600}
+.sc-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line)}
+.sc-bar div{transition:width .4s}
+.stage{position:relative;width:min(96vw,900px)}
+#bd{width:100%;height:auto;display:block;background:var(--card);border:2px solid var(--line);border-radius:12px;touch-action:manipulation}
+.hit{cursor:pointer}
+.nl{stroke-dasharray:1400;stroke-dashoffset:1400;animation:dr .4s forwards}
+@keyframes dr{to{stroke-dashoffset:0}}
+.nt{animation:fi .6s ease-out}
+@keyframes fi{from{fill-opacity:0}}
+#ov{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);border-radius:12px}
+#ov .card{text-align:center;padding:20px 28px}
+#ov h2{margin:0 0 6px}
+.timers{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;width:min(96vw,900px);font-size:15px;font-weight:600}
+.timers .card{display:flex;align-items:center;gap:8px;padding:6px 12px;font-variant-numeric:tabular-nums}
+#tbar{width:120px;height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+#tbar div{height:100%;width:100%}
+.warn{color:#e03131}
+#best{font-size:13px;color:var(--mu);font-weight:400}
+.hint{font-size:12px;color:var(--mu);width:min(96vw,900px);text-align:center;margin:0;line-height:1.6}
+</style></head><body>
+<h1>삼각형 땅따먹기</h1>
+<div class="bar card">
+  <label>상대 <select id="mode"><option value="pc">컴퓨터와 대결</option><option value="pp">사람과 사람</option></select></label>
+  <label id="fl">선공 <select id="first"><option value="0">내가 먼저</option><option value="1">컴퓨터가 먼저</option></select></label>
+  <label id="lvl">난이도 <input type="range" id="lv" min="1" max="30" value="10"> <b id="lvn">10</b>단계</label>
+  <label>점 <input type="range" id="dn" min="8" max="45" value="20"> <b id="dnn">20</b>개</label>
+  <label>1회 시간 <select id="tl"><option value="0">제한 없음</option><option value="10">10초</option><option value="15">15초</option><option value="20" selected>20초</option><option value="30">30초</option><option value="60">60초</option></select></label>
+  <label><input type="checkbox" id="bonus" checked> 삼각형 만들면 한 번 더</label>
+  <label><input type="checkbox" id="hint"> 힌트 보기</label>
+  <button id="nw">새 게임</button>
+</div>
+<div class="score card">
+  <div class="sc-row"><span id="s0"></span><span id="s1"></span></div>
+  <div class="sc-bar"><div id="b0"></div><div style="flex:1"></div><div id="b1"></div></div>
+</div>
+<div class="timers">
+  <div class="card">⏱ 경기 시간 <span id="clock">0:00.0</span></div>
+  <div class="card" id="tcard">⌛ 남은 시간 <span id="tleft">-</span><span id="tbar"><div></div></span></div>
+  <span id="best"></span>
+</div>
+<div id="st"></div>
+<div class="stage">
+  <svg id="bd" viewBox="0 0 1000 640"></svg>
+  <div id="ov"><div class="card"><h2 id="rt"></h2><div id="rs" class="sub"></div><div style="margin-top:12px"><button id="again" class="on">다시 하기</button></div></div></div>
+</div>
+<p class="hint">점 하나를 누르고 다른 점을 눌러 직선을 그어요. 선은 다른 선과 교차하거나 다른 점을 지나갈 수 없어요.<br>
+내가 그은 선으로 <b>안에 점이 없는 삼각형</b>이 닫히면 그 삼각형은 내 땅이 되어 내 색으로 칠해져요. 한 선으로 삼각형 두 개를 동시에 얻을 수도 있어요.<br>
+1회 시간 제한을 정하면, 시간 안에 선을 긋지 못할 때 차례가 상대에게 넘어가요.<br>
+더 이상 그을 선이 없으면 게임 끝! 칠한 <b>넓이</b>가 더 넓은 사람이 이겨요. (점 배치에 따라 누구도 가질 수 없는 빈 땅이 조금 남을 수 있어요)</p>
+<script>
+const $=s=>document.querySelector(s),VW=1000,VH=640,COLS=['#1c7ed6','#e8590c'];
+let t0=0,tEnd=0,turnStart=0,lastLeft=null;
+let dots=[],legal=new Map(),adj=[],lines=[],tris=[],turn=0,sel=-1,over=false,fresh=-1,msg='',gid=0,score=[0,0],cnt=[0,0],hullA=1,emptyC=new Map();
+const cfg=()=>({pc:$('#mode').value==='pc',first:+$('#first').value,level:+$('#lv').value,n:+$('#dn').value,bonus:$('#bonus').checked,tl:+$('#tl').value});
+const names=()=>{const c=cfg();return c.pc?(c.first===0?['나','컴퓨터']:['컴퓨터','나']):['1P','2P']};
+const isAI=t=>{const c=cfg();return c.pc&&t===(c.first===0?1:0)};
+const rnd=a=>Math.floor(Math.random()*a);
+const key=(a,b)=>a<b?a+'-'+b:b+'-'+a;
+
+// ---------- 기하 ----------
+function dseg(p,a,b){const dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy;let t=((p.x-a.x)*dx+(p.y-a.y)*dy)/l;t=Math.max(0,Math.min(1,t));return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy)}
+const cr=(o,p,q)=>(p.x-o.x)*(q.y-o.y)-(p.y-o.y)*(q.x-o.x);
+function conflict(m,l){
+  if(m.a===l.a||m.a===l.b||m.b===l.a||m.b===l.b)return false;
+  const A=dots[m.a],B=dots[m.b],C=dots[l.a],D=dots[l.b];
+  return cr(A,B,C)*cr(A,B,D)<=0&&cr(C,D,A)*cr(C,D,B)<=0}
+const triArea=(a,b,c)=>Math.abs(cr(dots[a],dots[b],dots[c]))/2;
+function empty(a,b,c){ // 삼각형 안에 다른 점이 없는가
+  const s=[a,b,c].sort((x,y)=>x-y),k=s.join(',');
+  if(emptyC.has(k))return emptyC.get(k);
+  const A=dots[a],B=dots[b],C=dots[c],sg=Math.sign(cr(A,B,C));let ok=true;
+  for(let i=0;i<dots.length&&ok;i++){if(i===a||i===b||i===c)continue;const P=dots[i];
+    if(Math.sign(cr(A,B,P))===sg&&Math.sign(cr(B,C,P))===sg&&Math.sign(cr(C,A,P))===sg)ok=false}
+  emptyC.set(k,ok);return ok}
+let gap=16;
+function mkDots(n){ // 어떤 점도 다른 두 점을 잇는 선에 너무 가깝지 않게 → 판 전체가 삼각형으로 나뉨
+  const md0=Math.sqrt(VW*VH/n)*.6;let md=md0,tries=0,strict=true;dots=[];gap=10;
+  while(dots.length<n){
+    const p={x:40+Math.random()*(VW-80),y:40+Math.random()*(VH-80)};
+    let ok=dots.every(q=>Math.hypot(p.x-q.x,p.y-q.y)>=md);
+    for(let i=0;strict&&ok&&i<dots.length;i++)for(let j=0;ok&&j<dots.length;j++){
+      if(j>i&&dseg(p,dots[i],dots[j])<gap)ok=false;
+      if(j!==i&&dseg(dots[j],p,dots[i])<gap)ok=false}
+    if(ok){dots.push(p);tries=0}
+    if(++tries>600){tries=0;md*=.96;if(md<md0*.55)strict=false}}}
+function mkPairs(){
+  legal=new Map();
+  for(let i=0;i<dots.length;i++)for(let j=i+1;j<dots.length;j++){
+    let ok=true;
+    for(let k=0;k<dots.length;k++)if(k!==i&&k!==j&&dseg(dots[k],dots[i],dots[j])<gap-.01){ok=false;break}
+    if(ok)legal.set(i+'-'+j,{a:i,b:j,k:i+'-'+j})}}
+function hullArea(){
+  const P=dots.map(p=>p).sort((p,q)=>p.x-q.x||p.y-q.y),h=[];
+  for(const pass of [P,P.slice().reverse()]){const st=[];for(const p of pass){while(st.length>=2&&cr(st[st.length-2],st[st.length-1],p)<=0)st.pop();st.push(p)}st.pop();h.push(...st)}
+  let A=0;for(let i=0;i<h.length;i++){const p=h[i],q=h[(i+1)%h.length];A+=p.x*q.y-q.x*p.y}
+  return Math.abs(A)/2}
+
+// ---------- 상태 다루기 (컴퓨터 시뮬레이션에도 사용) ----------
+const S={get adj(){return adj},get legal(){return legal}};
+function capsS(T,a,b){const r=[];for(const c of T.adj[a])if(T.adj[b].has(c)&&empty(a,b,c))r.push(c);return r}
+function gainS(T,a,b){let g=0;for(const c of capsS(T,a,b))g+=triArea(a,b,c);return g}
+function applyS(T,m){T.adj[m.a].add(m.b);T.adj[m.b].add(m.a);for(const [k,x] of T.legal)if(x===m||conflict(x,m))T.legal.delete(k)}
+
+// ---------- 컴퓨터 ----------
+// 선 m을 그은 뒤 상대가 바로 먹을 수 있게 되는 새 삼각형들 (마지막 변 → 넓이)
+function newOpps(m){
+  const r=new Map(),{a,b}=m;
+  for(let c=0;c<dots.length;c++){
+    if(c===a||c===b)continue;
+    const ha=adj[a].has(c),hb=adj[b].has(c);
+    if(ha===hb)continue;
+    const k=ha?key(b,c):key(a,c);
+    if(!legal.has(k)||!empty(a,b,c))continue;
+    r.set(k,(r.get(k)||0)+triArea(a,b,c))}
+  return r}
+function chainSim(m){ // m을 그은 뒤 상대가 연속으로 먹어 갈 수 있는 넓이 (욕심쟁이 가정)
+  const T={adj:adj.map(s=>new Set(s)),legal:new Map(legal)};applyS(T,m);
+  let tot=0;
+  for(let it=0;it<300;it++){
+    let best=null,bg=0;
+    for(const x of T.legal.values()){const g=gainS(T,x.a,x.b);if(g>bg){bg=g;best=x}}
+    if(!best)break;tot+=bg;applyS(T,best)}
+  return tot}
+function aiPick(){
+  const c=cfg(),p=(c.level-1)/29,L=[...legal.values()],unit=hullA/Math.max(4,2*dots.length);
+  if(Math.random()<.45*(1-p))return L[rnd(L.length)];
+  const G=new Map();for(const m of L){const g=gainS(S,m.a,m.b);if(g>0)G.set(m.k,g)}
+  const seeCap=Math.random()>.6*(1-p);
+  let best=null,bv=-Infinity;
+  if(c.bonus){
+    if(G.size&&seeCap){for(const m of L){const g=G.get(m.k)||0;if(g>bv){bv=g;best=m}}return best}
+    const V=L.map(m=>{let v=0;for(const g of newOpps(m).values())v+=g;return v});
+    const mn=Math.min(...V);
+    if(mn>0&&c.level>=12&&L.length<=80)L.forEach((m,i)=>{if(V[i]<=mn*3||L.length<=30)V[i]=Math.max(V[i],chainSim(m))});
+    L.forEach((m,i)=>{const v=-V[i]+(G.get(m.k)||0)-Math.random()*(1-p)*unit*1.5;if(v>bv){bv=v;best=m}});
+    return best}
+  // 한 번 더 없음: 내 이득 - 상대의 다음 최대 이득
+  for(const m of L){
+    const g=seeCap?(G.get(m.k)||0):0,N=newOpps(m);
+    let opp=0;
+    for(const [k,v] of N)opp=Math.max(opp,v+(G.get(k)||0));
+    for(const [k,v] of G){if(k===m.k)continue;const x=legal.get(k);if(conflict(x,m))continue;opp=Math.max(opp,v+(N.get(k)||0))}
+    const v=g-opp*(.4+.6*p)-Math.random()*(1-p)*unit*1.5;
+    if(v>bv){bv=v;best=m}}
+  return best}
+function aiTurn(){
+  const g=gid;
+  setTimeout(()=>{if(g!==gid||over)return;const m=aiPick();play(m.a,m.b)},650)}
+
+// ---------- 진행 ----------
+function play(a,b){
+  const m=legal.get(key(a,b));
+  if(!m)return;
+  const cs=capsS(S,m.a,m.b);
+  applyS(S,m);
+  lines.push({a:m.a,b:m.b,t:turn});fresh=lines.length-1;
+  let got=0;
+  for(const c of cs){const ar=triArea(m.a,m.b,c);tris.push({p:[m.a,m.b,c],t:turn,i:fresh});score[turn]+=ar;cnt[turn]++;got+=ar}
+  sel=-1;
+  const bonus=cfg().bonus&&cs.length>0;
+  msg=cs.length?names()[turn]+' 삼각형 '+cs.length+'개 획득!'+(bonus?' 한 번 더':''):'';
+  if(!bonus)turn=1-turn;
+  turnStart=Date.now();
+  if(!legal.size){over=true;tEnd=Date.now();tick();showEnd()}
+  render();
+  if(!over&&isAI(turn))aiTurn()}
+function pct(v){return (v/hullA*100).toFixed(1)+'%'}
+const fmt=ms=>{const t=ms/1000,m=Math.floor(t/60);return m+':'+(t-m*60).toFixed(1).padStart(4,'0')};
+const bestKey=()=>{const c=cfg();return 'tri-best-'+c.n+'-'+c.level+'-'+c.tl+(c.bonus?'b':'')};
+function getBest(){try{const v=localStorage.getItem(bestKey());return v?+v:null}catch(e){return null}}
+function setBest(v){try{localStorage.setItem(bestKey(),v)}catch(e){}}
+function showBest(){const c=cfg(),b=c.pc?getBest():null;
+  $('#best').textContent=c.pc?(b?'🏆 이 설정 최고 기록 '+fmt(b):'🏆 아직 이 설정의 승리 기록이 없어요'):''}
+function tick(){
+  const now=over?tEnd:Date.now();
+  $('#clock').textContent=fmt(now-t0);
+  const c=cfg(),card=$('#tcard');
+  card.style.display=c.tl?'':'none';
+  if(!c.tl)return;
+  const bar=$('#tbar div');
+  if(over||isAI(turn)){$('#tleft').textContent=over?'-':'컴퓨터 차례';$('#tleft').className='';bar.style.width='0%';return}
+  const left=c.tl-(now-turnStart)/1000;
+  if(left<=0){ // 시간 초과 → 차례 넘김
+    const n=names();sel=-1;msg=n[turn]+' 시간 초과! 차례가 '+n[1-turn]+'에게 넘어가요';
+    turn=1-turn;turnStart=Date.now();render();
+    if(isAI(turn))aiTurn();return}
+  const sec=Math.ceil(left);
+  if(sec!==lastLeft){lastLeft=sec;$('#tleft').textContent=sec+'초';$('#tleft').className=left<=5?'warn':''}
+  bar.style.width=(left/c.tl*100)+'%';bar.style.background=left<=5?'#e03131':COLS[turn]}
+setInterval(tick,100);
+function showEnd(){
+  const n=names(),d=score[0]-score[1];
+  $('#rt').innerHTML=Math.abs(d)<1e-6?'무승부!':'<span class="chip" style="background:'+COLS[d>0?0:1]+'"></span> '+n[d>0?0:1]+' 승리!';
+  $('#rs').innerHTML=n[0]+' '+pct(score[0])+' ('+cnt[0]+'개) · '+n[1]+' '+pct(score[1])+' ('+cnt[1]+'개)<br>총 '+lines.length+'개의 선 · 경기 시간 '+fmt(tEnd-t0);
+  const c=cfg(),me=c.first===0?0:1;
+  if(c.pc&&d!==0&&(d>0?0:1)===me){
+    const t=tEnd-t0,b=getBest();
+    if(b===null||t<b){setBest(t);$('#rs').innerHTML+='<br><b>🏆 새 최고 기록! '+fmt(t)+'</b>'+(b?' (이전 '+fmt(b)+')':'')}
+    else $('#rs').innerHTML+='<br>성공 시간 '+fmt(t)+' · 최고 기록 '+fmt(b);
+    showBest()}
+  setTimeout(()=>{if(over)$('#ov').style.display='flex'},700)}
+function onDot(i){
+  if(over||isAI(turn))return;
+  if(sel<0){sel=i;msg='';render();return}
+  if(sel===i){sel=-1;render();return}
+  if(legal.has(key(sel,i))){play(sel,i);return}
+  sel=-1;msg='그을 수 없는 선이에요 (교차하거나 점을 지나가거나 이미 이어진 점)';render()}
+function render(){
+  const alive=new Set();for(const m of legal.values()){alive.add(m.a);alive.add(m.b)}
+  const cand=new Set();
+  if(sel>=0)for(let j=0;j<dots.length;j++)if(j!==sel&&legal.has(key(sel,j)))cand.add(j);
+  const col=COLS[turn],hint=$('#hint').checked&&!over;let h='',nCap=0;
+  tris.forEach(T=>{const P=T.p.map(i=>dots[i].x+','+dots[i].y).join(' ');
+    h+='<polygon points="'+P+'" fill="'+COLS[T.t]+'" fill-opacity=".45" stroke="none"'+(T.i===fresh?' class="nt"':'')+'/>'});
+  if(hint)for(const m of legal.values())if(gainS(S,m.a,m.b)>0){nCap++;const A=dots[m.a],B=dots[m.b];
+    h+='<line x1="'+A.x+'" y1="'+A.y+'" x2="'+B.x+'" y2="'+B.y+'" stroke="'+col+'" stroke-width="3" stroke-dasharray="8 7" opacity=".7"/>'}
+  lines.forEach((l,i)=>{const A=dots[l.a],B=dots[l.b];
+    h+='<line x1="'+A.x+'" y1="'+A.y+'" x2="'+B.x+'" y2="'+B.y+'" stroke="'+COLS[l.t]+'" stroke-width="'+(i===fresh?5:3.5)+'" stroke-linecap="round"'+(i===fresh?' class="nl"':'')+'/>'});
+  dots.forEach((p,i)=>{const s=i===sel,c=cand.has(i);
+    h+='<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(s?12:8)+'" fill="var(--card)" stroke="'+(s||c?col:'var(--fg)')+'" stroke-width="'+(s?5:c?4:2.5)+'" opacity="'+(alive.has(i)||over?1:.4)+'"'+(c?' stroke-dasharray="4 3"':'')+'/>'+
+       '<circle class="hit" data-i="'+i+'" cx="'+p.x+'" cy="'+p.y+'" r="20" fill="transparent"/>'});
+  $('#bd').innerHTML=h;
+  const n=names();
+  $('#s0').innerHTML='<span class="chip" style="background:'+COLS[0]+'"></span> '+n[0]+' '+pct(score[0])+' <span class="sub">('+cnt[0]+'개)</span>';
+  $('#s1').innerHTML='<span class="sub">('+cnt[1]+'개)</span> '+pct(score[1])+' '+n[1]+' <span class="chip" style="background:'+COLS[1]+'"></span>';
+  $('#b0').style.cssText='background:'+COLS[0]+';width:'+(score[0]/hullA*100)+'%';
+  $('#b1').style.cssText='background:'+COLS[1]+';width:'+(score[1]/hullA*100)+'%';
+  let st=over?'게임 끝':'<span class="chip" style="background:'+col+'"></span>'+n[turn]+' 차례'+(isAI(turn)?' (생각 중…)':'');
+  if(hint)st+=' <span class="sub">· 남은 선 '+legal.size+'개 · 바로 삼각형이 되는 선 '+nCap+'개(점선)</span>';
+  if(msg)st+=' <span class="sub">· '+msg+'</span>';
+  $('#st').innerHTML=st}
+function newGame(){
+  gid++;const c=cfg();
+  $('#fl').style.display=$('#lvl').style.display=c.pc?'':'none';
+  emptyC=new Map();mkDots(c.n);mkPairs();hullA=hullArea();adj=dots.map(()=>new Set());
+  lines=[];tris=[];score=[0,0];cnt=[0,0];
+  turn=0;sel=-1;over=false;fresh=-1;msg='';$('#ov').style.display='none';
+  t0=turnStart=Date.now();tEnd=0;lastLeft=null;showBest();render();tick();
+  if(isAI(0))aiTurn()}
+$('#bd').addEventListener('click',e=>{const i=e.target.dataset&&e.target.dataset.i;if(i!==undefined)onDot(+i)});
+$('#lv').oninput=e=>$('#lvn').textContent=e.target.value;
+$('#dn').oninput=e=>$('#dnn').textContent=e.target.value;
+['mode','first','lv','dn','bonus','tl'].forEach(id=>$('#'+id).onchange=newGame);
+$('#hint').onchange=render;$('#nw').onclick=newGame;$('#again').onclick=newGame;
+newGame();
+</script></body></html>
